@@ -21,6 +21,7 @@ export interface UserDocument {
   password: string;
   name?: string;
   role: string;
+  refreshToken?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -43,6 +44,8 @@ export interface Config {
   mongoUri: string;
   jwtSecret: string;
   jwtExpiresIn: string;
+  jwtRefreshSecret: string;
+  jwtRefreshExpiresIn: string;
   rateLimitMax: number;
   rateLimitWindowMs: number;
 }

@@ -48,9 +48,12 @@ import { ApiResponse } from '../types/common';
  *                 data:
  *                   type: object
  *                   properties:
- *                     token:
+ *                     accessToken:
  *                       type: string
- *                       description: JWT token
+ *                       description: JWT access token
+ *                     refreshToken:
+ *                       type: string
+ *                       description: JWT refresh token
  *       400:
  *         description: Bad request
  *       409:
@@ -78,19 +81,31 @@ export const register = async (
       password
     });
     
-    // Generate JWT token
-    const token = jwt.sign(
+    // Generate access token
+    const accessToken = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       config.jwtSecret,
-      { expiresIn: config.jwtExpiresIn as string }
+      { expiresIn: config.jwtExpiresIn as jwt.SignOptions['expiresIn'] }
     );
+    
+    // Generate refresh token
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      config.jwtRefreshSecret,
+      { expiresIn: config.jwtRefreshExpiresIn as jwt.SignOptions['expiresIn'] }
+    );
+    
+    // Save refresh token to user
+    user.refreshToken = refreshToken;
+    await user.save();
     
     // Send response
     const response: ApiResponse = {
       success: true,
       message: 'User registered successfully',
       data: {
-        token,
+        accessToken,
+        refreshToken,
         user: {
           id: user._id,
           name: user.name,
@@ -147,9 +162,12 @@ export const register = async (
  *                 data:
  *                   type: object
  *                   properties:
- *                     token:
+ *                     accessToken:
  *                       type: string
- *                       description: JWT token
+ *                       description: JWT access token
+ *                     refreshToken:
+ *                       type: string
+ *                       description: JWT refresh token
  *       400:
  *         description: Bad request
  *       401:
@@ -177,19 +195,30 @@ export const login = async (
       throw new Error('Invalid credentials');
     }
     
-    // Generate JWT token
-    const token = jwt.sign(
+    // Generate access token
+    const accessToken = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       config.jwtSecret,
-      { expiresIn: config.jwtExpiresIn as string }
+      { expiresIn: config.jwtExpiresIn as jwt.SignOptions['expiresIn'] }
     );
+    
+    // Generate refresh token
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      config.jwtRefreshSecret,
+      { expiresIn: config.jwtRefreshExpiresIn as jwt.SignOptions['expiresIn'] }
+    );
+    
+    // Save refresh token to user
+    await User.findByIdAndUpdate(user._id, { refreshToken });
     
     // Send response
     const response: ApiResponse = {
       success: true,
       message: 'User logged in successfully',
       data: {
-        token,
+        accessToken,
+        refreshToken,
         user: {
           id: user._id,
           name: user.name,
@@ -201,6 +230,100 @@ export const login = async (
     
     res.status(200).json(response);
   } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Refresh access token using refresh token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: Refresh token
+ *     responses:
+ *       200:
+ *         description: New access token generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Token refreshed successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                       description: New JWT access token
+ *       401:
+ *         description: Invalid refresh token
+ *       404:
+ *         description: User not found
+ */
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      res.status(401);
+      throw new Error('Refresh token is required');
+    }
+    
+    // Verify refresh token
+    try {
+      const decoded = jwt.verify(refreshToken, config.jwtRefreshSecret) as { id: string };
+      
+      // Find user with this refresh token
+      const user = await User.findOne({ _id: decoded.id, refreshToken });
+      
+      if (!user) {
+        res.status(404);
+        throw new Error('User not found or refresh token is invalid');
+      }
+      
+      // Generate new access token
+      const accessToken = jwt.sign(
+        { id: user._id, email: user.email, role: user.role },
+        config.jwtSecret,
+        { expiresIn: config.jwtExpiresIn as jwt.SignOptions['expiresIn'] }
+      );
+      
+      // Send response
+      const response: ApiResponse = {
+        success: true,
+        message: 'Token refreshed successfully',
+        data: {
+          accessToken
+        }
+      };
+      
+      res.status(200).json(response);
+    } catch (error) {
+      res.status(401);
+      throw new Error('Invalid refresh token');
+    }
+  } catch (error: any) {
     next(error);
   }
 };
