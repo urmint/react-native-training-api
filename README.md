@@ -16,7 +16,7 @@ A complete Node.js backend API for React Native trainees to learn API integratio
 ### Prerequisites
 
 - Node.js (v14 or higher)
-- MongoDB (local or remote)
+- MongoDB connection string (ask your trainer or senior developer)
 
 ### Installation
 
@@ -27,7 +27,15 @@ A complete Node.js backend API for React Native trainees to learn API integratio
 npm install
 ```
 
-3. Start the development server:
+3. Set up environment variables:
+
+```bash
+cp example.env .env
+```
+
+4. Update the `.env` file with the MongoDB connection string provided by your trainer or senior developer
+
+5. Start the development server:
 
 ```bash
 npm run dev
@@ -63,17 +71,19 @@ This provides interactive documentation for all available endpoints.
 
 ## Environment Variables
 
-The following environment variables are used in this project:
+The following environment variables are used in this project. An `example.env` file is provided that you can copy to `.env` to get started quickly:
 
 ```
 PORT=3000
 NODE_ENV=development
-MONGO_URI=mongodb://localhost:27017/react-native-training
-JWT_SECRET=react-native-training-secret-key-for-jwt-authentication
+MONGO_URI=your_mongodb_connection_string_here
+JWT_SECRET=your-secure-jwt-secret-key
 JWT_EXPIRES_IN=1d
 RATE_LIMIT_MAX=100
 RATE_LIMIT_WINDOW_MS=60000
 ```
+
+> **Important:** Ask your trainer or senior developer for the MongoDB connection string. For security reasons, the actual connection string is not included in this public repository.
 
 ## Project Structure
 
@@ -95,6 +105,20 @@ src/
 2. Register a new user
 3. Login to get a JWT token
 4. Use the token in the Authorization header for protected routes
+
+### Troubleshooting
+
+#### MongoDB Connection Issues
+
+- **Error: "MongooseServerSelectionError"**: This means the application cannot connect to the MongoDB database. Make sure:
+  - You have an active internet connection
+  - You're using the correct connection string provided by your trainer or senior developer
+  - You've properly set up the connection string in your .env file
+  - Your network allows connections to MongoDB (some corporate networks may block it)
+
+- **Error: "Operation buffering timed out"**: This indicates a timeout when trying to connect to MongoDB. Check:
+  - Your internet connection stability
+  - The MongoDB server is running and accessible
 
 ## Learning Resources
 
